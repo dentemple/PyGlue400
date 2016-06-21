@@ -1,14 +1,34 @@
 import win32com.client
-from const import SEARCH_FORWARD, NO_TIMEOUT
 
 
 class AS400:
     def __init__(self):
-        self.ConnList = win32com.client.Dispatch("PCOMM.autECLConnList")
-        self.Session = win32com.client.Dispatch("PCOMM.autECLSession")
-        self.Metrics = win32com.client.Dispatch("PCOMM.autECLWinMetrics")
-        self.Operator = win32com.client.Dispatch("PCOMM.autECLOIA")
+
+        # ----- Names for connecting to the AS400's Host Automation Class Library -----
+        _app_name = "PCOMM"
+        _connection_automation_object = "%s.autECLConnList" % _app_name
+        _session_automation_object = "%s.autECLSession" % _app_name
+        _metrics_automation_object = "%s.autECLWinMetrics" % _app_name
+        _operator_automation_object = "%s.autECLOIA" % _app_name
+
+        # ----- Setting the connections to the AS400's Host Automation Class Library -----
+        self.ConnList = win32com.client.Dispatch(_connection_automation_object)
+        self.Session = win32com.client.Dispatch(_session_automation_object)
+        self.Metrics = win32com.client.Dispatch(_metrics_automation_object)
+        self.Operator = win32com.client.Dispatch(_operator_automation_object)
         self.Presentation = None
+
+        # ----- AS400 magic values -----
+        self.DEFAULT_TO_FIRST_SESSION_CREATED = 1
+        self.SEARCH_FORWARD = 1
+        self.SEARCH_BACKWARD = 2
+        self.NO_TIMEOUT = 0
+        self.NOT_INHIBITED = 0
+        self.INHIBITED_FROM_SYSTEM_WAIT = 1
+        self.INHIBITED_FROM_COMMUNICATION_CHECK = 2
+        self.INHIBITED_FROM_PROGRAM_CHECK = 3
+        self.INHIBITED_FROM_MACHINE_CHECK = 4
+        self.INHIBITED_FROM_OTHER = 5
 
     def refresh(self):
         self.ConnList.Refresh
@@ -23,14 +43,20 @@ class AS400:
         self.refresh()
         return self.ConnList.Count
 
-    def return_connection_name(self, connection_number=1):
+    def return_connection_name(self, connection_number=None):
+        if connection_number is None:
+            connection_number = self.DEFAULT_TO_FIRST_SESSION_CREATED
         return self.ConnList(connection_number).Name
 
-    def return_connection_handle(self, connection_number=1):
+    def return_connection_handle(self, connection_number=None):
+        if connection_number is None:
+            connection_number = self.DEFAULT_TO_FIRST_SESSION_CREATED
         self.refresh()
         return self.ConnList(connection_number).Handle
 
-    def return_connection_type(self, connection_number=1):
+    def return_connection_type(self, connection_number=None):
+        if connection_number is None:
+            connection_number = self.DEFAULT_TO_FIRST_SESSION_CREATED
         self.refresh()
         return self.ConnList(self, connection_number).ConnType
 
@@ -67,13 +93,19 @@ class AS400:
     def is_inhibited(self):
         return self.Operator.InputInhibited
 
-    def wait_for_input(self, timeout=NO_TIMEOUT):
+    def wait_for_input(self, timeout=None):
+        if timeout is None:
+            timeout = self.NO_TIMEOUT
         self.Operator.WaitForInputReady(timeout)
 
-    def wait_for_app(self, timeout=NO_TIMEOUT):
+    def wait_for_app(self, timeout=None):
+        if timeout is None:
+            timeout = self.NO_TIMEOUT
         self.Operator.WaitForAppAvailable(timeout)
 
-    def pause(self, timeout=NO_TIMEOUT, optional_add_milliseconds=None):
+    def pause(self, timeout=None, optional_add_milliseconds=None):
+        if timeout is None:
+            timeout = self.NO_TIMEOUT
         self.wait_for_app(timeout=timeout)
         self.wait_for_input(timeout=timeout)
         if optional_add_milliseconds:
